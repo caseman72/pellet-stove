@@ -211,11 +211,15 @@ async function handleFailed() {
   const data = await checkThermostat();
   if (!data) return;
 
-  log(`FAILED STATE: ${data.temperature}°F | workingState: ${data.workingState} | Waiting for user intervention...`);
+  const tempDiff = data.heatSetpoint - data.temperature;
+  const isHeating = data.workingState === "heating";
+  const isBelowThreshold = tempDiff >= CONFIG.tempThreshold;
 
-  // Check if problem resolved (no longer in heating state)
-  if (data.workingState !== "heating") {
-    log(`workingState changed to "${data.workingState}". Problem may be resolved.`);
+  log(`FAILED STATE: ${data.temperature}°F (diff: ${tempDiff.toFixed(1)}°) | workingState: ${data.workingState} | Waiting...`);
+
+  // Check if problem resolved - either not heating or temp is within threshold
+  if (!isHeating || !isBelowThreshold) {
+    log(`Stove recovered - ${!isHeating ? "heating stopped" : "temp within threshold"}`);
     log(`Resetting cycle count and resuming monitoring.`);
     cycleCount = 0;
     tempHistory = [];
