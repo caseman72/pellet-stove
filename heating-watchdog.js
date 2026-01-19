@@ -13,6 +13,7 @@ const CONFIG = {
 // State machine states
 const State = {
   MONITORING: "MONITORING",
+  WAITING_FOR_IGNITION: "WAITING_FOR_IGNITION",
   WAITING_AFTER_CYCLE: "WAITING_AFTER_CYCLE",
   FAILED: "FAILED",
 };
@@ -21,6 +22,8 @@ const State = {
 let state = State.MONITORING;
 let cycleCount = 0;
 let lastCycleTime = null;
+let ignitionStartTime = null;
+let lastWorkingState = null;
 let tempHistory = []; // { timestamp, temperature }
 const MAX_HISTORY = 10; // Keep last 10 readings
 
@@ -125,11 +128,23 @@ async function handleMonitoring() {
   const data = await checkThermostat();
   if (!data) return;
 
-  addTempReading(data.temperature, data.heatSetpoint);
-
   const tempDiff = data.heatSetpoint - data.temperature;
   const isHeating = data.workingState === "heating";
   const isBelowThreshold = tempDiff >= CONFIG.tempThreshold;
+
+  // Detect transition to heating - give ignition time to work
+  if (isHeating && lastWorkingState !== "heating") {
+    log(`Heating started - waiting 10 minutes for ignition`);
+    ignitionStartTime = Date.now();
+    tempHistory = []; // Clear history for fresh readings
+    lastWorkingState = data.workingState;
+    state = State.WAITING_FOR_IGNITION;
+    return;
+  }
+  lastWorkingState = data.workingState;
+
+  addTempReading(data.temperature, data.heatSetpoint);
+
   const isDeclining = isTemperatureDeclining();
 
   log(`Status: ${data.temperature}°F (setpoint: ${data.heatSetpoint}°F, diff: ${tempDiff.toFixed(1)}°) | ` +
@@ -161,6 +176,20 @@ async function handleMonitoring() {
       log(`Power cycle ${cycleCount}/${CONFIG.maxCycles} complete. Waiting 10 minutes before next check.`);
     }
   }
+}
+
+async function handleWaitingForIgnition() {
+  const elapsed = Date.now() - ignitionStartTime;
+  const remaining = CONFIG.cycleWaitMs - elapsed;
+
+  if (remaining > 0) {
+    log(`Waiting for ignition... ${Math.ceil(remaining / 1000 / 60)} minutes remaining`);
+    return;
+  }
+
+  log(`Ignition wait complete. Resuming monitoring.`);
+  tempHistory = [];
+  state = State.MONITORING;
 }
 
 async function handleWaitingAfterCycle() {
@@ -199,6 +228,9 @@ async function tick() {
     switch (state) {
       case State.MONITORING:
         await handleMonitoring();
+        break;
+      case State.WAITING_FOR_IGNITION:
+        await handleWaitingForIgnition();
         break;
       case State.WAITING_AFTER_CYCLE:
         await handleWaitingAfterCycle();
