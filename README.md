@@ -2,6 +2,34 @@
 
 A daemon that monitors a Wyze thermostat and automatically power-cycles a pellet stove when the fire fails to light.
 
+## How It Works
+
+### Physical Setup
+
+```
+[Wyze Thermostat] → [C-Wire Adapter] → [Pellet Stove]
+                          ↑
+                    [Wyze Plug]
+```
+
+Pellet stoves typically don't have a C-wire (common wire) that smart thermostats need for power. A **C-wire adapter** bridges this gap, allowing a Wyze thermostat to control the stove.
+
+The C-wire adapter is plugged into a **Wyze smart plug**. This gives us remote control over the entire heating system:
+
+- **Plug ON**: Thermostat can control the stove normally
+- **Plug OFF**: Stove is completely disabled (won't run)
+
+### Vacation Mode
+
+When away from home:
+1. Turn off the Wyze plug remotely
+2. Stove won't run, conserving pellets
+3. Backup furnace keeps house above freezing
+4. When heading home, turn plug back on remotely
+5. By arrival, house is warm
+
+The watchdog daemon safely handles this - if the plug is off at startup, it exits cleanly instead of trying to turn it on.
+
 ## Problem
 
 Pellet stoves sometimes fail to ignite. The thermostat shows "heating" but the temperature drops instead of rising. The fix is to power-cycle the stove to trigger a new ignition attempt.
