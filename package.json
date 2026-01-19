@@ -1,0 +1,11 @@
+{
+  "name": "pellet-stove",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node heating-watchdog.js"
+  },
+  "dependencies": {
+    "@caseman72/wyzer-api": "^1.0.0"
+  }
+}
