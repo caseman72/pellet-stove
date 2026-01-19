@@ -38,21 +38,46 @@ Pellet stoves sometimes fail to ignite. The thermostat shows "heating" but the t
 
 This watchdog:
 1. Checks the thermostat every minute
-2. Detects when heating but temperature is declining
-3. Cycles the plug (off 10s, on) to restart ignition
-4. Retries up to 3 times before giving up (likely out of pellets)
+2. Waits 10 minutes when heating starts (ignition time)
+3. Detects when heating but temperature is declining
+4. Cycles the plug (off 10s, on) to restart ignition
+5. Retries up to 3 times before giving up (likely out of pellets)
+6. Resets cycle count when heating succeeds
+
+### State Machine
+
+```
+MONITORING ──────────────────────────────────────┐
+    │                                            │
+    │ (idle → heating)                           │ (temp within threshold)
+    ▼                                            │
+WAITING_FOR_IGNITION ───(10 min)───► MONITORING ─┘
+                                         │
+                                         │ (heating + declining + 2°+ below)
+                                         ▼
+                                    POWER CYCLE
+                                         │
+                                         ▼
+WAITING_AFTER_CYCLE ◄────────────────────┘
+    │
+    │ (10 min)
+    ▼
+MONITORING ◄─────── (3 failures) ───► FAILED (wait for user)
+```
 
 ## Trigger Conditions
 
 All must be true:
 - `workingState == "heating"`
 - Temperature is 2°+ below setpoint
-- Temperature dropped 1°+ from recent readings
+- Temperature dropped 1°+ from recent readings (debounce)
 
 ## Safety Features
 
 - **Startup check**: Exits if plug is off (maintenance/vacation mode)
+- **Ignition wait**: 10 minute grace period when heating starts (stove needs time to ignite)
 - **Max 3 cycles**: Stops retrying after 3 failed attempts
+- **Auto-reset**: Cycle count resets when heating succeeds
 - **Setpoint tracking**: Ignores temp decline if someone lowered the setpoint
 - **Plug verification**: Confirms plug actually turned on after power cycle
 
