@@ -135,6 +135,12 @@ async function handleMonitoring() {
   log(`Status: ${data.temperature}°F (setpoint: ${data.heatSetpoint}°F, diff: ${tempDiff.toFixed(1)}°) | ` +
       `workingState: ${data.workingState} | cycles: ${cycleCount}/${CONFIG.maxCycles}`);
 
+  // Reset cycles when heating is working (temp within threshold or not heating)
+  if (cycleCount > 0 && (!isHeating || !isBelowThreshold)) {
+    log(`Heating successful - resetting cycle count`);
+    cycleCount = 0;
+  }
+
   // Check if we need to intervene
   if (isHeating && isBelowThreshold && isDeclining) {
     log(`PROBLEM DETECTED: Heating but temperature declining and ${tempDiff.toFixed(1)}° below setpoint`);
