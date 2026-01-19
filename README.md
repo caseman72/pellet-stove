@@ -62,7 +62,7 @@ WAITING_AFTER_CYCLE ◄───────────────────
     │
     │ (10 min)
     ▼
-MONITORING ◄─────── (3 failures) ───► FAILED (wait for user)
+MONITORING ◄─────── (3 failures) ───► FAILED (auto-recover when stove works)
 ```
 
 ## Trigger Conditions
@@ -76,7 +76,7 @@ All must be true:
 
 - **Startup check**: Exits if plug is off (maintenance/vacation mode)
 - **Ignition wait**: 10 minute grace period when heating starts (stove needs time to ignite)
-- **Max 3 cycles**: Stops retrying after 3 failed attempts
+- **Max 3 cycles**: Stops retrying after 3 failed attempts, auto-recovers when stove works
 - **Auto-reset**: Cycle count resets when heating succeeds
 - **Setpoint tracking**: Ignores temp decline if someone lowered the setpoint
 - **Plug verification**: Confirms plug actually turned on after power cycle
